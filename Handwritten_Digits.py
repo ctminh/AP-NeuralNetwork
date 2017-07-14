@@ -116,6 +116,7 @@ for iteration in range(max_nb_of_iterations):
     activations = forward_step(X_validation, layers)
     validation_cost = layers[-1].get_cost(activations[-1], T_validation)
     validation_costs.append(validation_cost)
+    print ("[Training] Iter %d - loss = %f", (iteration, train_cost))
     # if len(validation_costs) > 3:
     #     # Stop training if the cost on the validation set doesn't decrease
     #     #  for 3 iterations
@@ -160,10 +161,10 @@ print y_true
 print y_pred
 
 # Test NN model with real image
-fig = plt.figure(figsize=(10, 2), dpi=100)
-ax = fig.add_subplot(1,10,1)
-ax.matshow(digits.images[8], cmap='binary')
-ax.axis('off')
+# fig = plt.figure(figsize=(10, 2), dpi=100)
+# ax = fig.add_subplot(1,10,1)
+# ax.matshow(digits.images[8], cmap='binary')
+# ax.axis('off')
 
 
 plt.show()

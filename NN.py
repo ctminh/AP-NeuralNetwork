@@ -7,6 +7,7 @@ import matplotlib.text as plttext
 import itertools
 import collections
 rng = np.random.RandomState(1311)
+import pdb
 # %matplotlib inline
 
 # Activation functions
@@ -43,6 +44,7 @@ def logistic_deriv(y):  # Derivative of logistic function
 
 # Define the cost function
 def cost(y, t):
+    # pdb.set_trace()
     return 0.5 * ((t - y)**2).sum()
 
 def activation_function(X, type, bp = False):
@@ -121,9 +123,12 @@ class NonLinearLayer(Layer):
     def get_output(self, X):
         """Perform the forward step transformation."""
         return logistic(X)
+        # return activation_function(X, 'sigmoid')
     
     def get_input_grad(self, Y, output_grad):
         """Return the gradient at the inputs of this layer."""
+        # print "dev at NonLinear Layer = ", np.multiply(activation_function(Y, 'sigmoid', True), output_grad)
+        # return np.multiply(activation_function(Y, 'sigmoid', True), output_grad)
         return np.multiply(logistic_deriv(Y), output_grad)
 
 class OutputLayer(Layer):
@@ -131,17 +136,18 @@ class OutputLayer(Layer):
     
     def get_output(self, X):
         """Perform the forward step transformation."""
-        return softmax(X)
-        # return X
+        # return softmax(X)
+        return X
     
     def get_input_grad(self, Y, T):
         """Return the gradient at the inputs of this layer."""
-        return (Y - T) / Y.shape[0]
+        # print "dev at Output Layer = ", (Y - T)
+        return (Y - T) #/ Y.shape[0]
     
     def get_cost(self, Y, T):
         """Return the cost at the output of this output layer."""
-        return - np.multiply(T, np.log(Y)).sum() / Y.shape[0]
-        # return cost(Y, T)
+        # return - np.multiply(T, np.log(Y)).sum() / Y.shape[0]
+        return cost(Y, T)
 
 # Define the forward propagation step as a method
 def forward_step(input_samples, layers):
@@ -183,20 +189,33 @@ def backward_step(activations, targets, layers):
     # Use reversed to iterate backwards over the list of layers.
     for layer in reversed(layers):
         Y = activations.pop() # Get the activations of the last layer on the stack
+        # print "activation.pop()"
+        # print Y
         # Compute the error at the output layer
         # The output layer error is calculated different then hidden layer error
         if output_grad is None:
+            # print "input_grad = layer.get_input_grad(Y, targets)"
+            # print "return (Y - T)"
             input_grad = layer.get_input_grad(Y, targets)
         else:
+            # print "input_grad = layer.get_input_grad(Y, output_grad)"
             input_grad = layer.get_input_grad(Y, output_grad)
             
         # Get the input of this layer (activations of the previous layer)
         X = activations[-1]
+        # print "activation of prev layer"
+        # print X
+
         # Compute the layer parameter gradients used to update the parameters
         grads = layer.get_params_grad(X, output_grad)
+        # print "gradient of W, b"
+        # print grads
         param_grads.appendleft(grads)
         # Compute gradient at output of previous layer (input of current layer)
         output_grad = input_grad
+        # print "output_grad"
+        # print output_grad
+        # print "-----------------------"
     return list(param_grads)
 
 
@@ -213,21 +232,45 @@ def update_params(layers, param_grads, learning_rate):
             param -= learning_rate * grad  # Update each parameter
 
 # Define gradient checking
-def gradient_checking(layers, X_train, T_train):
+def gradient_checking(layers, X_train, T_train, oneD=False):
     # Perform gradient checking
-    nb_samples_gradientcheck = 10 # Test the gradients on a subset of the data
-    X_temp = X_train[0:nb_samples_gradientcheck,:]
-    T_temp = T_train[0:nb_samples_gradientcheck,:]
+    # print "++++++++ checking gradient ++++++++++"
+    nb_samples_gradientcheck = 5 # Test the gradients on a subset of the data
+    if oneD == False:
+        X_temp = X_train[0:nb_samples_gradientcheck,:]
+        T_temp = T_train[0:nb_samples_gradientcheck,:]
+    else:
+        X_temp = X_train[0:nb_samples_gradientcheck].reshape((nb_samples_gradientcheck,1))
+        T_temp = T_train[0:nb_samples_gradientcheck].reshape((nb_samples_gradientcheck,1))
+
+    # print "dataset X:"
+    # print X_temp
+    # print "dataset Y:"
+    # print T_temp
 
     # Get the parameter gradients with backpropagation
     activations = forward_step(X_temp, layers)
+    # print "activations = ", len(activations)
+    # for i in range(len(activations)):
+    #     print "activation ", i
+    #     print activations[i]
+
     param_grads = backward_step(activations, T_temp, layers)
+
+    # for i in range(len(layers)):
+    #     print "\tparam ",i
+    #     print param_grads[i]
+
+    # print "+++++++++++++++++++++++++++++++++++++++"
+    # print "param_grads = ", len(param_grads)
+    # print param_grads[3]
 
     # Set the small change to compute the numerical gradient
     eps = 0.0001
 
     # Compute the numerical gradients of the parameters in all layers
     for idx in range(len(layers)):
+        # print "layer ", idx
         layer = layers[idx]
         layer_backprop_grads = param_grads[idx]
 

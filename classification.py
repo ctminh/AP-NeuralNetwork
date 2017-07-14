@@ -21,14 +21,14 @@ def create_data(numOfSamples=None):
 	    numOfSamples = 100
 	    
 	# Generate first class
-	m1 = np.asarray([0, 0], dtype=np.float32)
+	m1 = np.asarray([0, 5], dtype=np.float32)
 	cov1 = np.asarray([[0.5, 0], [0, 0.5]], dtype=np.float32)
 	data1 = rng.multivariate_normal(m1, cov1, numOfSamples)
 	label1 = np.ones((numOfSamples), dtype=np.uint16) - 1
 	label1 = I[label1,:]
 
 	# Generate second class
-	m2 = np.asarray([5,5], dtype=np.float32)
+	m2 = np.asarray([10,5], dtype=np.float32)
 	cov2 = np.asarray([[0.5, 0], [0, 0.5]], dtype=np.float32)
 	data2 = rng.multivariate_normal(m2, cov2, numOfSamples)
 	label2 = np.ones((numOfSamples), dtype=np.uint16)
@@ -36,7 +36,7 @@ def create_data(numOfSamples=None):
 
 	# Generate third class
 	noise = np.abs((np.reshape(rng.normal(0, 0.01, numOfSamples), (numOfSamples,1))))
-	S1 = np.asarray([[1, 0], [0, 0.7]], dtype=np.float32)
+	S1 = np.asarray([[3, 0], [0, 0.7]], dtype=np.float32)
 	S2 = np.asarray([[4, 0], [0, 4]], dtype=np.float32)
 	m3 = np.asarray([0.5, 0.5], dtype=np.float32)
 	cov3 = np.asarray([[0.5, 0], [0, 0.5]], dtype=np.float32)
@@ -121,9 +121,6 @@ def find_decision_boundary(X, Y, W1, b1, W2, b2, config):
     xv = xv.flatten().astype(np.float32).reshape((num_fake_data ** 2, 1))
     yv = yv.flatten().astype(np.float32).reshape((num_fake_data ** 2, 1))
     X = np.concatenate((xv, yv), 1)
-    if (demo_type == "classifynnkernel"):
-        kernel_poly_order = config['kernel_poly_order']
-        X = kernel_preprocess(X, kernel_poly_order)
 
     del xv
     del yv
@@ -156,17 +153,13 @@ def train_draw(X, Y, W1, b1, W2, b2, config, all_cost, i, J):
 
     num_hidden_node = config['num_hidden_node']
     num_train_per_class = config['num_train_per_class']
-    train_method = "Neural Network"
-    save_img = config['save_img']
-    demo_type = config['demo_type']
 
     lr = config['lr']
 
     pylab.clf()
-    # f = plt.figure(2, figsize=(16, 8))
-    f = plt.figure(2, figsize=(12, 6))
+    f = plt.figure(2, figsize=(16, 8))
 
-    title = '%s with %d hidden nodes, lr = %.4g, %d epoch, cost = %.4g' % (train_method, num_hidden_node, lr, i, J)
+    title = 'Classification with %d hidden nodes, lr = %.4g, %d iter, cost = %.4g' % (num_hidden_node, lr, i, J)
 
     plt.subplot(1, 2, 1)
     [grid1, grid2, grid3] = find_decision_boundary(X, Y, W1, b1, W2, b2, config)
@@ -175,11 +168,10 @@ def train_draw(X, Y, W1, b1, W2, b2, config, all_cost, i, J):
 
     visualize_data(X[0:num_train_per_class, :],
                    X[num_train_per_class:num_train_per_class * 2, :],
-                   X[num_train_per_class * 2:, :],
-                   2)
+                   X[num_train_per_class * 2:, :],2)
     plt.subplot(1, 2, 2)
     plt.plot(all_cost, 'b')
-    plt.xlabel('Epoch')
+    plt.xlabel('Iteration')
     plt.ylabel('Cost')
 
     f.suptitle(title, fontsize=15)
@@ -263,99 +255,101 @@ def get_grad(X, Y, W1, b1, W2, b2, config):
     return (dJ_dW1, dJ_db1, dJ_dW2, dJ_db2)
 
 if __name__ == '__main__':
-	numOfSamples = 1000
-	numOfTrain = 500
-	numOfValidation = 250
-	(data1, label1, data2, label2, data3, label3) = create_data(numOfSamples)
-	(train_X, train_Y, val_X, val_Y, test_X, test_Y) = devideDataset(data1, label1, data2, label2, data3, label3,
+    numOfSamples = 2000
+    numOfTrain = 1000
+    numOfValidation = 500
+    (data1, label1, data2, label2, data3, label3) = create_data(numOfSamples)
+    (train_X, train_Y, val_X, val_Y, test_X, test_Y) = devideDataset(data1, label1, data2, label2, data3, label3,
                                                                              numOfTrain, numOfValidation)
 
-	# Visualize dataset
-	visualize_data(data1, data2, data3, 1)
+    # Visualize dataset
+    visualize_data(data1, data2, data3, 1)
 
-	# Pre-process data
-	mean_X = np.mean(train_X, 0, keepdims=True)
-	std_X = np.std(train_X, 0, keepdims=True)
-	train_X = (train_X - mean_X) / std_X
-	val_X = (val_X - mean_X) / std_X
-	test_X = (test_X - mean_X) / std_X
+    # Pre-process data
+    mean_X = np.mean(train_X, 0, keepdims=True)
+    std_X = np.std(train_X, 0, keepdims=True)
+    train_X = (train_X - mean_X) / std_X
+    val_X = (val_X - mean_X) / std_X
+    test_X = (test_X - mean_X) / std_X
 
-	# Parse param from config
-	config = {}
-	config['demo_type'] = "classifynnsgd"
-	config['save_img'] = False
-	config['num_epoch'] = 1000
-	config['lr'] = 0.8
-	config['num_train_per_class'] = numOfTrain
-	config['num_hidden_node'] = 3
-	config['activation_function'] = 'relu'
-	config['display_rate'] = 10 # epochs per display time
-	config['momentum'] = 0.9
+    # Parse param from config
+    config = {}
+    config['demo_type'] = "classifynnsgd"
+    config['save_img'] = False
+    config['num_epoch'] = 1000
+    config['lr'] = 0.8
+    config['num_train_per_class'] = numOfTrain
+    config['num_hidden_node'] = 24
+    config['activation_function'] = 'sigmoid'
+    config['display_rate'] = 10 # epochs per display time
+    config['momentum'] = 0.9
 
-	lr = config['lr']
-	num_epoch = config['num_epoch']
-	num_train_per_class = config['num_train_per_class']
-	num_hidden_node = config['num_hidden_node']
-	momentum_rate = config['momentum']
-	display_rate = config['display_rate']
-	activation_function_type = config['activation_function']
+    lr = config['lr']
+    num_epoch = config['num_epoch']
+    num_train_per_class = config['num_train_per_class']
+    num_hidden_node = config['num_hidden_node']
+    display_rate = config['display_rate']
+    activation_function_type = config['activation_function']
 
-	num_train_sample = train_X.shape[0]
-	num_feature = train_X.shape[1]
-	num_class = train_Y.shape[1]
-	print "Number of training samples = ",num_train_sample
+    num_train_sample = train_X.shape[0]
+    num_feature = train_X.shape[1]
+    num_class = train_Y.shape[1]
+    print "Number of training samples = ",num_train_sample
 
-	# Create a weight matrix of shape (2, num_hidden_node)
-	W1 = rng.randn(num_feature, num_hidden_node)
-	b1 = rng.randn(1, num_hidden_node)
+    # Create a weight matrix of shape (2, num_hidden_node)
+    W1 = rng.randn(num_feature, num_hidden_node)
+    b1 = rng.randn(1, num_hidden_node)
+    # print "W1 = ", W1
+    # print "b1 = ", b1
 
-	# Create output weight
-	W2 = rng.randn(num_hidden_node, num_class)
-	b2 = rng.randn(1, num_class)
+    # Create output weight
+    W2 = rng.randn(num_hidden_node, num_class)
+    b2 = rng.randn(1, num_class)
+    # print "W2 = ", W2
+    # print "b2 = ", b2
 
-	# Create momentum storage
-	W1m = np.zeros_like(W1)
-	b1m = np.zeros_like(b1)
-	W2m = np.zeros_like(W2)
-	b2m = np.zeros_like(b2)
+    # Create momentum storage
+    W1m = np.zeros_like(W1)
+    b1m = np.zeros_like(b1)
+    W2m = np.zeros_like(W2)
+    b2m = np.zeros_like(b2)
 
-	num_train_sample = 1
-	pylab.ion()
-	pylab.show()
-	all_cost = []
-	for i in range(0, num_epoch):
-	    # Calculate the loss
-	    a1 = np.dot(train_X, W1) + b1
-	    # print "a1 = ", a1
-	    z1 = activation_function(a1, activation_function_type)
-	    # print "z1 = ", z1
-	    a2 = np.dot(z1, W2) + b2
-	    # print "a2 = ", a2
-	    J = softmax_log_loss(a2, train_Y)
-	    # print "loss = ", J
+    num_train_sample = 1
+    pylab.ion()
+    pylab.show()
+    all_cost = []
+    for i in range(0, num_epoch):
+        # Calculate the loss
+        a1 = np.dot(train_X, W1) + b1
+        # print "a1 = ", a1
+        z1 = activation_function(a1, activation_function_type)
+        # print "z1 = ", z1
+        a2 = np.dot(z1, W2) + b2
+        # print "a2 = ", a2
+        J = softmax_log_loss(a2, train_Y)
+        # print "loss = ", J
 
-	    # Doing backprop
-	    print('[Epoch %d] Train loss: %f' % (i, J))
+        # Doing backprop
+        print('[Iteration %d] Train loss: %f' % (i, J))
 
-	    dJ_dW1, dJ_db1, dJ_dW2, dJ_db2 = get_grad(train_X, train_Y, W1, b1, W2, b2, config)
-	    # NumericalGradientCheck(train_X, train_Y, W1, b1, W2, b2, dJ_db1)
+        dJ_dW1, dJ_db1, dJ_dW2, dJ_db2 = get_grad(train_X, train_Y, W1, b1, W2, b2, config)
+        # NumericalGradientCheck(train_X, train_Y, W1, b1, W2, b2, dJ_db1)
 
-	    W1m = W1m * momentum_rate + lr * dJ_dW1 * lr
-	    b1m = b1m * momentum_rate + lr * dJ_db1 * lr
-	    W2m = W2m * momentum_rate + lr * dJ_dW2 * lr
-	    b2m = b2m * momentum_rate + lr * dJ_db2 * lr
+        W1m = W1m * 0.9 + lr * dJ_dW1 * lr
+        b1m = b1m * 0.9 + lr * dJ_db1 * lr
+        W2m = W2m * 0.9 + lr * dJ_dW2 * lr
+        b2m = b2m * 0.9 + lr * dJ_db2 * lr
 
-	    W1 = W1 - W1m
-	    b1 = b1 - b1m
-	    W2 = W2 - W2m
-	    b2 = b2 - b2m
+        W1 = W1 - W1m
+        b1 = b1 - b1m
+        W2 = W2 - W2m
+        b2 = b2 - b2m
 
-	    all_cost.append(J)
+        all_cost.append(J)
 
-	    if (i % display_rate == 0):
-	        config['train_method'] = 'sgdm'
-	        train_draw(train_X, train_Y, W1, b1, W2, b2, config, all_cost, i, J)
+        if (i % display_rate == 0):
+            train_draw(train_X, train_Y, W1, b1, W2, b2, config, all_cost, i, J)
 
-	    bp = 1
+        bp = 1
 
-	plt.show()
+	# plt.show()
